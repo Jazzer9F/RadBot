@@ -1,0 +1,9 @@
+seaborn==0.10.1
+matplotlib==3.2.2
+pandas==1.0.5
+timeloop==1.0.2
+web3==5.13.0
+requests==2.24.0
+numpy==1.18.5
+Pillow==8.0.1
+pyTelegramBotAPI==3.7.4

@@ -222,7 +222,7 @@ class RewardTrender():
         return (E, U)
     
     
-    def plotRewards(self, stakesDF):
+    def calcRewardsOverTime(self, stakesDF):
         def calcBonus(t, t0):
             t0_ = pd.Series(pd.Timestamp(t0*1e9), index=t)
             return 1/6 + 5/6*((((t-t0_)/pd.Timedelta('90d'))**2).clip(0,1))
@@ -240,6 +240,12 @@ class RewardTrender():
             trendDF[f'stakeTime {s.Index}'] = stakeTime_
             trendDF[f'stake {s.Index}'] = R
 
+        return trendDF
+    
+    
+    def plotRewards(self, stakesDF):
+        trendDF = self.calcRewardsOverTime(stakesDF)
+        
         ix = self.baseIndex
         trendDF = trendDF.loc[self.baseIndex]
         past = (ix <= pd.Timestamp(time.time()*1e9))

@@ -48,6 +48,7 @@ class RewardTrender():
         combined['destroyedST'] = self.calcDestroyedStakeTime(staked, unstaked)
         combined.destroyedST = combined.destroyedST.fillna(0).cumsum()
         combined['remainingST'] = combined.totalStakeTime - combined.destroyedST
+        combined['donatedU'] = self.calcDonatedRewards(combined)
 
         self.stakeData = combined
         
@@ -185,8 +186,19 @@ class RewardTrender():
         
         unstaked_ = unstaked_.groupby('timestamp').sum()
         unstaked_ = unstaked_.set_index(pd.to_datetime(unstaked.timestamp*1e9))
-        return unstaked_.destroyed       
+        return unstaked_.destroyed
 
+
+    def calcDonatedRewards(self, stakeData):
+        claimed = stakeData.claimed.diff()
+        availableU = stakeData.remainingU + claimed
+        destroyed = stakeData.destroyedST.diff()
+        totalST = stakeData.remainingST + destroyed
+        fullRewards = destroyed/totalST*availableU
+        donatedRewards = (fullRewards-claimed).fillna(0)
+        
+        return donatedRewards.cumsum()
+    
 
     def calcEmission(self, t):
         t0 = 1605629336

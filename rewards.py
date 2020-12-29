@@ -259,11 +259,6 @@ class RewardTrender():
     
     def plotRewards(self, stakesDF):
         trendDF = self.calcRewardsOverTime(stakesDF)
-
-        d_columns = [c for c in trendDF.columns if 'donated ' in c]
-        donated = trendDF[d_columns].sum(axis=1)
-        sns.lineplot(data=donated.iloc[-1])
-        print(f'Total donated: {donated.iloc[-1]}')
         
         ix = self.baseIndex
         trendDF = trendDF.loc[self.baseIndex]

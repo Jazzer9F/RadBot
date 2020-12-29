@@ -197,7 +197,7 @@ class RewardTrender():
         fullRewards = destroyed/totalST*availableU
         donatedRewards = (fullRewards-claimed).fillna(0)
         
-        return donatedRewards.cumsum()
+        return donatedRewards
     
 
     def calcEmission(self, t):
@@ -248,15 +248,22 @@ class RewardTrender():
             stakeTime_ = self.calcTotalStakeTime(stake_)
             bonus = calcBonus(ix, t0)
             R = stakeTime_/self.stakeData.remainingST*self.stakeData.remainingU*bonus
+            d = stakeTime_/self.stakeData.remainingST*self.stakeData.donatedU
             trendDF[f'staked {s.Index}'] = stake_
             trendDF[f'stakeTime {s.Index}'] = stakeTime_
             trendDF[f'stake {s.Index}'] = R
+            trendDF[f'donated {s.Index}'] = d.cumsum()*bonus
 
         return trendDF
     
     
     def plotRewards(self, stakesDF):
         trendDF = self.calcRewardsOverTime(stakesDF)
+
+        d_columns = [c for c in trendDF.columns if 'donated ' in c]
+        donated = trendDF[d_columns].sum(axis=1)
+        sns.lineplot(data=donated.iloc[-1])
+        print(f'Total donated: {donated.iloc[-1]}')
         
         ix = self.baseIndex
         trendDF = trendDF.loc[self.baseIndex]

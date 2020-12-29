@@ -4,6 +4,7 @@ RadBot.py
 
 Telegram bot tracking some Radix metrics
 """
+import numpy as np
 import pandas as pd
 from web3 import Web3
 import time
@@ -151,13 +152,14 @@ class RadBot():
         LPs = self.portfolio.assets['naked LP'].sum()+self.portfolio.assets['staked LP'].sum()
         pooled_USDC = LPs/self.portfolio.totalLPs*self.portfolio.pool_USDC/1e6
         pooled_eXRD = LPs/self.portfolio.totalLPs*self.portfolio.pool_eXRD/1e18
+        totalRewards = self.portfolio.assets.rewards.sum()
         
         msg =   "Analysis of requested wallet(s)\n"
         msg += f"Unstaked USDC: {round(self.portfolio.assets.USDC.sum()/1e6,2)}\n"
         msg += f"Unstaked eXRD: {round(self.portfolio.assets.eXRD.sum()/1e18,2)}\n"
         msg += f"Pooled USDC: {round(pooled_USDC,2)}\n"
         msg += f"Pooled eXRD: {round(pooled_eXRD,2)}\n"
-        msg += f"Total Rewards: {round(self.portfolio.assets.rewards.sum(),2)}\n"
+        msg += f"Total Rewards: {round(totalRewards,2)}\n"
         msg +=  "--------------------------------+\n"
         msg += f"Total value: {round(self.portfolio.assets.value.sum(),2)} USDC\n"
 
@@ -167,7 +169,18 @@ class RadBot():
                 msg += f"\nStake {i} - age {round((stake.t1 - stake.t0)/(60*60*24),2)}d - current APY {round(stake.APY_current,2)}% - green {round(stake.green,2)}% - red {round(stake.red,2)}% - orange {round(stake.orange,2)}% - blue {round(stake.blue,2)}%"
             else:
                 msg += f"\nStake {i} - age {round((stake.t1 - stake.t0)/(60*60*24),2)}d - rewards {round(stake.rewards,2)} - bonus {round(6*stake.bonus,2)} - current APY {round(stake.APY_current,2)}% - average APY {round(stake.APY_realized,2)}%"
-        
+
+        t = pd.Timestamp.now()
+        trendDF = self.trender.calcRewardsOverTime(self.portfolio.stakes)
+        d_columns = [c for c in trendDF.columns if 'donated ' in c]
+        donated = trendDF[d_columns].sum(axis=1)*sum(self.portfolio.stakes.stake*self.portfolio.stakes.bonus)/sum(self.portfolio.stakes.stake)
+        donated = donated.groupby(donated.index).last()
+        donated[t] = np.NaN
+        donated = donated.sort_index().interpolate(method='polynomial',order=2)[t]
+
+        msg += f"\n\nRewards mined through staking: {round(totalRewards-donated,2)}"
+        msg += f"\nRewards donated by early leavers: {round(donated,2)}"
+
         if len(self.portfolio.stakes) > 1:
             overallAPY = sum(self.portfolio.stakes.stake*self.portfolio.stakes.APY_current)/sum(self.portfolio.stakes.stake)
             overallBonus = 6*sum(self.portfolio.stakes.stake*self.portfolio.stakes.bonus)/sum(self.portfolio.stakes.stake)

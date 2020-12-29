@@ -48,6 +48,7 @@ class RewardTrender():
         combined['destroyedST'] = self.calcDestroyedStakeTime(staked, unstaked)
         combined.destroyedST = combined.destroyedST.fillna(0).cumsum()
         combined['remainingST'] = combined.totalStakeTime - combined.destroyedST
+        combined['donatedU'] = self.calcDonatedRewards(combined)
 
         self.stakeData = combined
         
@@ -185,8 +186,19 @@ class RewardTrender():
         
         unstaked_ = unstaked_.groupby('timestamp').sum()
         unstaked_ = unstaked_.set_index(pd.to_datetime(unstaked.timestamp*1e9))
-        return unstaked_.destroyed       
+        return unstaked_.destroyed
 
+
+    def calcDonatedRewards(self, stakeData):
+        claimed = stakeData.claimed.diff()
+        availableU = stakeData.remainingU + claimed
+        destroyed = stakeData.destroyedST.diff()
+        totalST = stakeData.remainingST + destroyed
+        fullRewards = destroyed/totalST*availableU
+        donatedRewards = (fullRewards-claimed).fillna(0)
+        
+        return donatedRewards
+    
 
     def calcEmission(self, t):
         t0 = 1605629336
@@ -222,7 +234,7 @@ class RewardTrender():
         return (E, U)
     
     
-    def plotRewards(self, stakesDF):
+    def calcRewardsOverTime(self, stakesDF):
         def calcBonus(t, t0):
             t0_ = pd.Series(pd.Timestamp(t0*1e9), index=t)
             return 1/6 + 5/6*((((t-t0_)/pd.Timedelta('90d'))**2).clip(0,1))
@@ -236,10 +248,18 @@ class RewardTrender():
             stakeTime_ = self.calcTotalStakeTime(stake_)
             bonus = calcBonus(ix, t0)
             R = stakeTime_/self.stakeData.remainingST*self.stakeData.remainingU*bonus
+            d = stakeTime_/self.stakeData.remainingST*self.stakeData.donatedU
             trendDF[f'staked {s.Index}'] = stake_
             trendDF[f'stakeTime {s.Index}'] = stakeTime_
             trendDF[f'stake {s.Index}'] = R
+            trendDF[f'donated {s.Index}'] = d.cumsum()*bonus
 
+        return trendDF
+    
+    
+    def plotRewards(self, stakesDF):
+        trendDF = self.calcRewardsOverTime(stakesDF)
+        
         ix = self.baseIndex
         trendDF = trendDF.loc[self.baseIndex]
         past = (ix <= pd.Timestamp(time.time()*1e9))

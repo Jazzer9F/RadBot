@@ -174,7 +174,7 @@ class RadBot():
         t = pd.Timestamp.now()
         trendDF = self.trender.calcRewardsOverTime(self.portfolio.stakes)
         d_columns = [c for c in trendDF.columns if 'donated ' in c]
-        donated = trendDF[d_columns].sum(axis=1)*sum(self.portfolio.stakes.stake*self.portfolio.stakes.bonus)/sum(self.portfolio.stakes.stake)
+        donated = trendDF[d_columns].sum(axis=1)
         donated = donated.groupby(donated.index).last()
         donated[t] = np.NaN
         donated = donated.sort_index().interpolate(method='polynomial',order=2)[t]

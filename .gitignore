@@ -1,3 +1,5 @@
+/.idea
+/venv
 
 infura.json
 subscribers.json

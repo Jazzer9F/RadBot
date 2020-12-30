@@ -14,6 +14,7 @@ plt.rc('font', weight='bold', size=16)
 plt.rc('lines', linewidth=3.5)
 
 eXRD_rewards = '0xDF191bFbdE2e3E178e3336E63C18DD20d537c421'
+STARTING_BLOCK = 11269809
 
 with open('./infura.json') as f:
     INFURA_URL = json.load(f)['url']
@@ -32,41 +33,46 @@ class RewardTrender():
     
     def __init__(self):
         staked, unstaked = self.loadDataBase()
-        totalStake = self.calcTotalStake(staked, unstaked)
-        totalStake = pd.concat([totalStake,pd.Series(index=self.baseIndex.append(self.emissionIndex),dtype=float)]).sort_index().fillna(method='ffill')
-        totalStake.name = 'totalStake'
-        
-        totalStakeTime = self.calcTotalStakeTime(totalStake)
-        (E, U) = self.calcEmission(totalStake.index)
-        
-        data = [totalStake, totalStakeTime, E, U]
-        combined = pd.concat(data, axis=1, keys=[s.name for s in data])
-        claimed = unstaked.set_index(pd.to_datetime(unstaked['timestamp']*1e9))['claimed']/1e18
-        combined['claimed'] = claimed
-        combined.claimed = combined.claimed.fillna(0).cumsum()
-        combined['remainingU'] = combined.totalU - combined.claimed
-        combined['destroyedST'] = self.calcDestroyedStakeTime(staked, unstaked)
-        combined.destroyedST = combined.destroyedST.fillna(0).cumsum()
-        combined['remainingST'] = combined.totalStakeTime - combined.destroyedST
-        combined['donatedU'] = self.calcDonatedRewards(combined)
+        if staked is not None:
+            totalStake = self.calcTotalStake(staked, unstaked)
+            totalStake = pd.concat([totalStake,pd.Series(index=self.baseIndex.append(self.emissionIndex),dtype=float)]).sort_index().fillna(method='ffill')
+            totalStake.name = 'totalStake'
 
-        self.stakeData = combined
+            totalStakeTime = self.calcTotalStakeTime(totalStake)
+            (E, U) = self.calcEmission(totalStake.index)
+
+            data = [totalStake, totalStakeTime, E, U]
+            combined = pd.concat(data, axis=1, keys=[s.name for s in data])
+            claimed = unstaked.set_index(pd.to_datetime(unstaked['timestamp']*1e9))['claimed']/1e18
+            combined['claimed'] = claimed
+            combined.claimed = combined.claimed.fillna(0).cumsum()
+            combined['remainingU'] = combined.totalU - combined.claimed
+            combined['destroyedST'] = self.calcDestroyedStakeTime(staked, unstaked)
+            combined.destroyedST = combined.destroyedST.fillna(0).cumsum()
+            combined['remainingST'] = combined.totalStakeTime - combined.destroyedST
+            combined['donatedU'] = self.calcDonatedRewards(combined)
+
+            self.stakeData = combined
         
         
     def loadDataBase(self):
         store = pd.HDFStore('stake.h5')
-        stakedDF = store['stakedDF']
-        unstakedDF = store['unstakedDF']
-        store.close()
-    
-        return (stakedDF, unstakedDF)
+        try:
+            return store['stakedDF'], store['unstakedDF']
+        except KeyError:
+            return None, None
+        finally:
+            store.close()
 
 
     def writeDataBase(self, stakedDF, unstakedDF):
         store = pd.HDFStore('stake.h5')
-        del store['stakedDF']
-        del store['unstakedDF']
-    
+        try:
+            del store['stakedDF']
+            del store['unstakedDF']
+        except KeyError:
+            pass
+
         store['stakedDF'] = stakedDF
         store['unstakedDF'] = unstakedDF
         store.close()
@@ -74,8 +80,14 @@ class RewardTrender():
         
     def updateEventList(self):
         staked, unstaked = self.loadDataBase()
-        
-        lastBlock = max(staked.blockNumber.max(), unstaked.blockNumber.max())
+
+        if staked is None:
+            staked = pd.DataFrame([])
+            unstaked = pd.DataFrame([])
+            lastBlock = STARTING_BLOCK
+        else:
+            lastBlock = max(staked.blockNumber.max(), unstaked.blockNumber.max())
+
         newStaked = self.getStakedEvents(lastBlock+1)
         newUnstaked = self.getUnstakedEvents(lastBlock+1)
         
@@ -91,7 +103,6 @@ class RewardTrender():
         RewardTrender.__init__(self)
 
         
-    #11269810
     def getStakedEvents(self, fromBlockNr):
         stakedFilter = rewardsContract.events.Staked.createFilter(fromBlock=int(fromBlockNr))
         stakedEventList = stakedFilter.get_all_entries()

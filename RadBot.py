@@ -203,14 +203,9 @@ class RadBot():
     
     
     def calcAPY(self):
-        WATS = self.portfolio.totalStakeSecs/self.portfolio.totalStake/60/60/24
-        resupply_time = self.portfolio.unlocked/self.portfolio.E/60/60/24
-
         msg =  f"Current spot price: {round(self.updatePrice(),4)} USDC/eXRD\n"
         msg += f"Current initial APY: {round(self.portfolio.initial_APY,2)}%\n"
         msg += f"Current nominal APY: {round(self.portfolio.nominal_APY,2)}% ({round(6*self.portfolio.nominal_APY,2)}%)\n"
-        msg += f"Average time staked: {round(WATS,2)} days\n"
-        msg += f"Rewards resupply time: {round(resupply_time,2)} days\n"
         
         return msg
 
@@ -223,6 +218,33 @@ class RadBot():
         msg += "\n  /mcap --> eXRD market cap"
         msg += "\n  /projection <address> --> Rewards trend"
         msg += "\n  /unlock --> next unlock info"
+        
+        return msg
+
+
+    def whenNegativeAPY(self):
+        launchTime = 1605542100
+        SiTi = self.portfolio.totalStakeDays
+        Si = self.portfolio.totalStake
+
+        ## Weighted average stake time
+        WATS = SiTi/self.portfolio.totalStake
+        ## Time to replenish the unlocked rewards pool
+        resupplyTime = self.portfolio.unlocked/self.portfolio.E/60/60/24
+
+        msg =   "Due to the reward pool mechanism, there is a possibility for older stake to lose unclaimed rewards (experience negative APY). See the slide deck at http://tiny.cc/RadixRewards for details."
+        msg += f"\n\nAverage time staked: {round(WATS,2)} days"
+        msg += f"\nRewards resupply time: {round(resupplyTime,2)} days"
+
+        T_launch = (int(time.time()) - launchTime)/60/60/24
+        if T_launch < (1 + T_launch/resupplyTime + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*WATS:
+            criticalStake = (1 + T_launch/resupplyTime + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*SiTi/T_launch
+            stakeMargin = criticalStake - Si
+            
+            USDC_per_LP = 2*self.portfolio.pool_USDC/self.portfolio.totalLPs
+            USDC_margin = stakeMargin * USDC_per_LP/1e6
+            
+            msg += f"\n\nCurrently nobody has negative APY. If more than {round(USDC_margin/1e6,2)}MM USDC of fresh stake is added, launch stake APY will go negative."
         
         return msg
 
@@ -247,6 +269,8 @@ class RadBot():
                 self.telegram.reply_to(message, "Failed to analyze address(es).")
         elif command in ['u', 'unlock']:
             self.telegram.reply_to(message, self.nextUnlock())
+        elif command in ['when', 'whenZeroAPY']:
+            self.telegram.reply_to(message, self.whenNegativeAPY())
         else:
             self.telegram.reply_to(message, "Unknown command. Try /help for command list.")        
             
@@ -255,7 +279,7 @@ class RadBot():
 if __name__ == "__main__":
     bot = RadBot() 
 
-    validCommands = ['start','help','apy','APY','a','analyse','analyze','mc','mcap','projection','u','unlock']
+    validCommands = ['start','help','apy','APY','a','analyse','analyze','mc','mcap','projection','u','unlock','when','whenZeroAPY']
     @bot.telegram.message_handler(commands = validCommands)
     def botCommand(message):
         try:
@@ -263,4 +287,4 @@ if __name__ == "__main__":
         except:
             bot.telegram.reply_to(message, "Error during execution.")
     
-    bot.telegram.polling()
+    #bot.telegram.polling()

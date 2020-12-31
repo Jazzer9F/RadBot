@@ -218,6 +218,7 @@ class RadBot():
         msg += "\n  /mcap --> eXRD market cap"
         msg += "\n  /projection <address> --> Rewards trend"
         msg += "\n  /unlock --> next unlock info"
+        msg += "\n  /when --> when negative APY"
         
         return msg
 

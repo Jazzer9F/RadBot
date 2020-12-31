@@ -23,3 +23,5 @@ Radix Telegram Bot
   ```bash
   mv -f stake_new.h5 stake.h5
   ```
+
+* myRadixPortfolio.py can be run standalone against a CSV file containing your own addresses

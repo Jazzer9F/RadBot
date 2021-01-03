@@ -1,5 +1,5 @@
 import pickle
-from typing import Dict
+from typing import Dict, List
 
 from eth_utils import keccak, event_abi_to_log_topic
 from web3._utils.events import get_event_data
@@ -24,14 +24,14 @@ class UniswapInfo:
         self.debug = debug
         self.updateTransactions()
 
-    def updateTransactions(self) -> Dict[str, Dict[str, int]]:
+    def updateTransactions(self) -> Dict[str, List[Dict[str, int]]]:
         uniInfo, lastBlock = self.loadDataBase()
 
         if uniInfo is None:
             uniInfo = {}
             lastBlock = STARTING_BLOCK
 
-        addresses, newLastBlock = self.getBalances(uniInfo, lastBlock + 1)
+        addresses, newLastBlock = self.updateBalances(uniInfo, lastBlock + 1)
 
         if newLastBlock == lastBlock:  # nothing changed yet
             return uniInfo
@@ -39,19 +39,18 @@ class UniswapInfo:
         self.writeDataBase(uniInfo, newLastBlock)
         return uniInfo
 
-    def getBalance(self, wallets: [str]) -> (int, int):
+    def getBalances(self, wallets: [str]) -> List[Dict[str, int]]:
         addresses = self.updateTransactions()
         store = BalanceStore(addresses)
-        bal_USDC = 0
-        bal_eXRD = 0
+        results = []
         for addr in wallets:
             balances = store.getBalances(addr)
-            if 'LP' in balances and balances['LP'] > 100 and 'eXRD' in balances and 'USDC' in balances:
-                bal_USDC += balances['USDC']
-                bal_eXRD += balances['eXRD']
-        return bal_USDC, bal_eXRD
+            for balance in balances:
+                if 'LP' in balance and balance['LP'] > 100 and 'eXRD' in balance and 'USDC' in balance:
+                    results.append(balance)
+        return results
 
-    def getBalances(self, addresses, fromBlockNr):
+    def updateBalances(self, addresses, fromBlockNr):
         entries = poolContract.events.Transfer.getLogs(fromBlock=int(fromBlockNr))
         lastBlock = int(fromBlockNr) - 1
 
@@ -72,6 +71,10 @@ class UniswapInfo:
             receipt = w3.eth.getTransactionReceipt(tx)
             if self.debug:
                 print('Block: ' + str(receipt['blockNumber']))
+            stake_USDC = 0
+            stake_eXRD = 0
+            stake_LP = 0
+            user_address = '0x0000'
             for log in receipt.logs:
                 if log.topics[0] == TRANSFER_TOPIC:
                     s = get_event_data(poolContract.events.Transfer.web3.codec, event_abi, log)
@@ -81,20 +84,25 @@ class UniswapInfo:
                     address = s['address']
                     value = args['value']
                     if address == pool and source == VOID:  # LP tokens created and transferred to user
-                        store.addBalance(to, 'LP', value)
+                        user_address = to
+                        stake_LP += value
                     elif address == pool and to == pool:  # LP tokens burned
-                        store.addBalance(source, 'LP', -value)
+                        user_address = source
+                        stake_LP -= value
                     elif to == pool and source != pool:  # eXRD/USDC added
-                        token = 'eXRD' if address == eXRD else 'USDC'
-                        store.addBalance(source, token, value)
+                        if address == eXRD:
+                            stake_eXRD += value
+                        elif address == USDC:
+                            stake_USDC += value
                     elif source == pool and to != pool:  # eXRD/USDC removed
-                        # ignore - track by LP tokens only
-                        pass
-                        # token = 'eXRD' if address == eXRD else 'USDC'
-                        # store.addBalance(to, token, -value)
+                        pass  # ignore - track by LP tokens only
                     else:  # transactions between Uniswap router and the Pool?
                         if self.debug:
                             print('FROM: ' + source + ' TO: ' + to + ' Address: ' + address + ' Amount: ' + str(value))
+            if stake_LP > 0:
+                store.addStake(user_address, stake_USDC, stake_eXRD, stake_LP)
+            elif stake_LP < 0:
+                store.removeStake(user_address, stake_LP)
 
         updatedAddresses = store.addresses
 

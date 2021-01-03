@@ -129,12 +129,14 @@ class RadBot:
     def analyseWallets(self, wallets, colors=False):
         try:
             self.portfolio = RadixPortfolio(wallets)
-        except:
+        except Exception as e:
+            print('Failed to retrieve wallet information: ' + repr(e))
             return "Failed to retrieve wallet information"
 
         try:
-            bal_USDC, bal_eXRD = self.uniswap.getBalance(wallets)
-        except:
+            uni_balances = self.uniswap.getBalances(wallets)
+        except Exception as e:
+            print('Failed to load Uniswap Info: ' + repr(e))
             return "Failed to load Uniswap Info"
 
         LPs = self.portfolio.assets['naked LP'].sum()+self.portfolio.assets['staked LP'].sum()
@@ -149,16 +151,6 @@ class RadBot:
         msg += f"Pooled USDC: {round(pooled_USDC,2)}\n"
         msg += f"Pooled eXRD: {round(pooled_eXRD,2)}\n"
         msg += f"Total Rewards: {round(totalRewards,2)}\n"
-        if bal_USDC > 0 and bal_eXRD > 0:
-            growth_factor = sqrt(self.portfolio.pool_USDC / self.portfolio.pool_eXRD / bal_USDC * bal_eXRD)
-            print('growth_factor=' + str(growth_factor))
-            initial_USDC = bal_USDC/1e6
-            initial_eXRD = bal_eXRD/1e18
-            expected_USDC = initial_USDC * growth_factor
-            expected_eXRD = initial_eXRD / growth_factor
-            fees_USDC = pooled_USDC - expected_USDC
-            fees_eXRD = pooled_eXRD - expected_eXRD
-            msg += f"Earned Fees: {round(fees_USDC, 2)} USDC + {round(fees_eXRD, 2)} eXRD\n"
         msg += "--------------------------------+\n"
         msg += f"Total value: {round(self.portfolio.assets.value.sum(),2)} USDC\n"
 
@@ -180,6 +172,23 @@ class RadBot:
 
         msg += f"\n\nRewards mined through staking: {round(totalRewards-donated,2)}"
         msg += f"\nRewards donated by early leavers: {round(donated,2)}"
+
+        if len(uni_balances):
+            fees_USDC = 0
+            fees_eXRD = 0
+            for balance in uni_balances:
+                price_change_factor = self.portfolio.pool_USDC / self.portfolio.pool_eXRD / balance['USDC'] * balance['eXRD']
+                growth_factor = sqrt(price_change_factor)
+                stake_share = balance['LP'] / self.portfolio.totalLPs
+                current_USDC = stake_share * self.portfolio.pool_USDC / 1e6
+                current_eXRD = stake_share * self.portfolio.pool_eXRD / 1e18
+                initial_USDC = balance['USDC'] / 1e6
+                initial_eXRD = balance['eXRD'] / 1e18
+                expected_USDC = initial_USDC * growth_factor
+                expected_eXRD = initial_eXRD / growth_factor
+                fees_USDC += current_USDC - expected_USDC
+                fees_eXRD += current_eXRD - expected_eXRD
+            msg += f"\n\nEarned Fees: {round(fees_USDC, 2)} USDC + {round(fees_eXRD, 2)} eXRD"
 
         if len(self.portfolio.stakes) > 1:
             overallAPY = sum(self.portfolio.stakes.stake*self.portfolio.stakes.APY_current)/sum(self.portfolio.stakes.stake)

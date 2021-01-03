@@ -2,27 +2,21 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from web3 import Web3
 
 import time
-import json
 import io
+
+from constants import *
+from utils import *
 
 plt.rc('figure', titleweight='bold')
 plt.rc('axes', grid='True', linewidth=1.2, titlepad=20)
 plt.rc('font', weight='bold', size=16)
 plt.rc('lines', linewidth=3.5)
 
-eXRD_rewards = '0xDF191bFbdE2e3E178e3336E63C18DD20d537c421'
-STARTING_BLOCK = 11269809
+w3 = initWeb3()
 
-with open('./infura.json') as f:
-    INFURA_URL = json.load(f)['url']
-w3 = Web3(Web3.HTTPProvider(INFURA_URL))
-
-with open('./eXRD_rewards.json') as f:
-    ABI = json.load(f)['result']
-rewardsContract = w3.eth.contract(address=eXRD_rewards, abi=ABI)
+rewardsContract = readContract(w3, './eXRD_rewards.json', eXRD_rewards)
 
 
 emissionTimestamps = np.array([1605629336, 1608221336, 1608221858, 1610813858])
@@ -95,7 +89,7 @@ class RewardTrender():
             return
         
         self.setAllTimestamps([newStaked, newUnstaked])
-        
+
         allStaked = pd.concat([staked, newStaked]).reset_index(drop=True)
         allUnstaked = pd.concat([unstaked, newUnstaked]).reset_index(drop=True)
         

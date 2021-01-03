@@ -13,6 +13,7 @@ import requests
 from telebot import TeleBot
 from myRadixPortfolio import RadixPortfolio
 from rewards import RewardTrender
+from scipy.optimize import minimize
 
 
 eXRD = '0x6468e79A80C0eaB0F9A2B574c8d5bC374Af59414'
@@ -238,15 +239,57 @@ class RadBot():
         msg += f"\nRewards resupply time: {round(resupplyTime,2)} days"
 
         T_launch = (int(time.time()) - launchTime)/60/60/24
-        if T_launch < (1 + T_launch/resupplyTime + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*WATS:
-            criticalStake = (1 + T_launch/resupplyTime + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*SiTi/T_launch
+
+        U = self.portfolio.unlocked
+        E = self.portfolio.E*(60*60*24)
+        eXRD_per_LP = 2*self.portfolio.pool_eXRD/self.portfolio.totalLPs
+
+        def APY(T0):
+            B_T0 = 1/6+5/6*min((T0/90)**2,1)
+            daily_eXRD_per_LP = U*B_T0/SiTi*(1 + T0*(E/U - Si/SiTi) + (T0<90)*10*(T0/90)**2/(1+5*(T0/90)**2))
+            yearly_eXRD_per_LP = daily_eXRD_per_LP*365
+            return 100*yearly_eXRD_per_LP/eXRD_per_LP
+
+
+        targetfunc = lambda T0: T0*(E/U-Si/SiTi) + 10*(T0/90)**2/(1+5*(T0/90)**2)
+        result = minimize(targetfunc,0,method='Powell',bounds=[(0,90)])
+        if not result['success']:
+            print('Failure to optimize target function')
+            return "Calculation error"
+        
+        T_min = result['x'][0]
+        APY_min = APY(T_min)
+
+        ## Weighted average stake time
+        WATS = SiTi/Si
+        ## Time to replenish the unlocked rewards pool
+        RT = U/E
+
+        msg =   "Due to the reward pool mechanism, there is a possibility for older stake to lose unclaimed rewards (experience negative APY). See the slide deck at http://tiny.cc/RadixRewards for details. Key parameters to monitor below:"
+        msg += f"\n\nAverage time staked: {round(WATS,2)} days"
+        msg += f"\nRewards resupply time: {round(RT,2)} days"
+
+        T_launch = (int(time.time()) - launchTime)/60/60/24
+        APY_launch = APY(T_launch)
+        
+        msg += f"\n\nNominal APY: {round(self.portfolio.nominal_APY,2)}% ({round(6*self.portfolio.nominal_APY,2)}%)"
+        msg += f"\nInitial APY: {round(self.portfolio.initial_APY,2)}%"
+        msg += f"\nLowest APY < 90d: {round(APY_min,2)}% for {round(T_min,1)} days old stake"
+        msg += f"\nLaunch stake APY: {round(APY_launch,2)}% which is {round(T_launch,1)} days old"
+
+        if APY_launch > 0:            
+            criticalStake = (1 + T_launch/RT + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*SiTi/T_launch
             stakeMargin = criticalStake - Si
             
             USDC_per_LP = 2*self.portfolio.pool_USDC/self.portfolio.totalLPs
             USDC_margin = stakeMargin * USDC_per_LP/1e6
             
-            msg += f"\n\nCurrently nobody has negative APY. If more than {round(USDC_margin/1e6,2)}MM USDC of fresh stake is added, launch stake APY will go negative."
-        
+            msg += f"\n\nCurrently launch stake has positive APY. If more than {round(USDC_margin/1e6,2)} MM USDC of fresh stake is added, launch stake APY will go negative."
+        else:
+            # This should be refined for the remote option that APY_min < 0
+            T_critical = max(U*SiTi/(Si*U - E*SiTi),90)
+            msg += f"\n\nCurrently all stake older than {round(T_critical,1)} days has negative APY."
+
         return msg
 
 
@@ -288,4 +331,4 @@ if __name__ == "__main__":
         except:
             bot.telegram.reply_to(message, "Error during execution.")
     
-    #bot.telegram.polling()
+    bot.telegram.polling()

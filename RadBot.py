@@ -220,6 +220,7 @@ class RadBot():
         msg += "\n  /projection <address> --> Rewards trend"
         msg += "\n  /unlock --> next unlock info"
         msg += "\n  /when --> when negative APY"
+        msg += "\n\n  /donate --> when you're in a generous mood"
         
         return msg
 
@@ -302,6 +303,8 @@ class RadBot():
             self.telegram.reply_to(message, self.calcAPY())
         elif command in ['a', 'analyse', 'analyze']:
             self.telegram.reply_to(message, self.analyseWallets(message.text.split()[1:]))
+        elif command in ['donate']:
+            self.telegram.reply_to(message, "RadBot is and will remain free to use for as long as I'll maintain her. If you find her services valuable, donations are welcome. Thanks for your support! \n\nETH address: 0x451423D5CA2618a3CC6944AD754A60083b3a125f")
         elif command in ['mc', 'mcap']:
             self.telegram.reply_to(message, self.calcMarketCap())        
         elif command in ['projection']:
@@ -323,7 +326,7 @@ class RadBot():
 if __name__ == "__main__":
     bot = RadBot() 
 
-    validCommands = ['start','help','apy','APY','a','analyse','analyze','mc','mcap','projection','u','unlock','when','whenZeroAPY']
+    validCommands = ['start','help','apy','APY','a','analyse','analyze','mc','mcap','projection','u','unlock','when','whenZeroAPY','donate']
     @bot.telegram.message_handler(commands = validCommands)
     def botCommand(message):
         try:

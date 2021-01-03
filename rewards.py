@@ -44,7 +44,7 @@ class RewardTrender():
             data = [totalStake, totalStakeTime, E, U]
             combined = pd.concat(data, axis=1, keys=[s.name for s in data])
             claimed = unstaked.set_index(pd.to_datetime(unstaked['timestamp']*1e9))['claimed']/1e18
-            combined['claimed'] = claimed
+            combined = combined.join(claimed)
             combined.claimed = combined.claimed.fillna(0).cumsum()
             combined['remainingU'] = combined.totalU - combined.claimed
             combined['destroyedST'] = self.calcDestroyedStakeTime(staked, unstaked)
@@ -196,7 +196,7 @@ class RewardTrender():
             unstaked_.loc[ix,'destroyed'] = DST
         
         unstaked_ = unstaked_.groupby('timestamp').sum()
-        unstaked_ = unstaked_.set_index(pd.to_datetime(unstaked.timestamp*1e9))
+        unstaked_ = unstaked_.set_index(pd.to_datetime(unstaked_.index.values*1e9))
         return unstaked_.destroyed
 
 

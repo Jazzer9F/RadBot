@@ -253,7 +253,7 @@ class RadBot():
 
 
         targetfunc = lambda T0: T0*(E/U-Si/SiTi) + 10*(T0/90)**2/(1+5*(T0/90)**2)
-        result = minimize(targetfunc,0,method='Powell',bounds=[(0,90)])
+        result = minimize(targetfunc,45,method='Powell',bounds=[(0,min(90,T_launch))])
         if not result['success']:
             print('Failure to optimize target function')
             return "Calculation error"
@@ -274,9 +274,9 @@ class RadBot():
         APY_launch = APY(T_launch)
         
         msg += f"\n\nNominal APY: {round(self.portfolio.nominal_APY,2)}% ({round(6*self.portfolio.nominal_APY,2)}%)"
-        msg += f"\nInitial APY: {round(self.portfolio.initial_APY,2)}%"
+        msg += f"\nInitial APY: {round(self.portfolio.initial_APY,2)}% for completely new stake"
         msg += f"\nLowest APY < 90d: {round(APY_min,2)}% for {round(T_min,1)} days old stake"
-        msg += f"\nLaunch stake APY: {round(APY_launch,2)}% which is {round(T_launch,1)} days old"
+        msg += f"\nLaunch stake APY: {round(APY_launch,2)}% for {round(T_launch,1)} days old stake"
 
         if APY_launch > 0:            
             criticalStake = (1 + T_launch/RT + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*SiTi/T_launch
@@ -291,6 +291,7 @@ class RadBot():
             T_critical = max(U*SiTi/(Si*U - E*SiTi),90)
             msg += f"\n\nCurrently all stake older than {round(T_critical,1)} days has negative APY."
 
+        msg += "\n\n"
         return msg
 
 
@@ -335,3 +336,4 @@ if __name__ == "__main__":
             bot.telegram.reply_to(message, "Error during execution.")
     
     bot.telegram.polling()
+    

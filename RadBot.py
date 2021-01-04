@@ -4,23 +4,20 @@ RadBot.py
 
 Telegram bot tracking some Radix metrics
 """
+from math import sqrt
+
 import numpy as np
 import pandas as pd
-from web3 import Web3
 import time
-import json
 import requests
 from telebot import TeleBot
 from myRadixPortfolio import RadixPortfolio
 from rewards import RewardTrender
 from scipy.optimize import minimize
 
-
-eXRD = '0x6468e79A80C0eaB0F9A2B574c8d5bC374Af59414'
-eXRD_vault = '0x2b988eE889C3049104C1A5F87AF0f522790CF5F6'
-eXRD_rewards = '0xDF191bFbdE2e3E178e3336E63C18DD20d537c421'
-USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-pool = '0x684B00a5773679f88598A19976fBeb25a68E9a5f'
+from constants import *
+from uniswap import UniswapInfo
+from utils import *
 
 locked_1 = '0x872BCC6C36b512c5FEd0BF947BA574B1cDC0eDD8'
 locked_2 = '0x6521b13F91171e0798f0feAE8b48Fb74957E2F2b'
@@ -46,42 +43,27 @@ locked = [locked_1, locked_2, locked_3, locked_4, locked_5, locked_6,
           locked_7, locked_8, locked_9, locked_10, locked_11, locked_12,
           locked_13, locked_14, locked_15, locked_16, locked_17, locked_18]
 
-with open('./infura.json') as f:
-    INFURA_URL = json.load(f)['url']
+w3 = initWeb3()
 
-w3 = Web3(Web3.HTTPProvider(INFURA_URL))
-with open('./eXRD_token.json') as f:
-    ABI = json.load(f)['result']
-eXRD_Contract = w3.eth.contract(address=eXRD, abi=ABI)
-
-with open('./eXRD_vault.json') as f:
-    ABI = json.load(f)['result']
-vaultContract = w3.eth.contract(address=eXRD_vault, abi=ABI)
-
-with open('./eXRD_rewards.json') as f:
-    ABI = json.load(f)['result']
-rewardsContract = w3.eth.contract(address=eXRD_rewards, abi=ABI)
-
-with open('./USDC_token.json') as f:
-    ABI = json.load(f)
-USDC_Contract = w3.eth.contract(address=USDC, abi=ABI)
-
-with open('./UniSwap_pair.json') as f:
-    ABI = json.load(f)['result']
-poolContract = w3.eth.contract(address=pool, abi=ABI)
+eXRD_Contract = readContract(w3, './eXRD_token.json', eXRD)
+vaultContract = readContract(w3, './eXRD_vault.json', eXRD_vault)
+rewardsContract = readContract(w3, './eXRD_rewards.json', eXRD_rewards)
+USDC_Contract = readContract(w3, './USDC_token.json', USDC)
+poolContract = readContract(w3, './UniSwap_pair.json', pool)
 
 with open('./RadBotToken.json') as f:
     RADBOT_TOKEN = json.load(f)['token']
 
 
-class RadBot():
+class RadBot:
     lastUnlockTrigger = 1607547600
     nextUnlockTarget = 0.11
        
-    def __init__(self, token = RADBOT_TOKEN):
+    def __init__(self, token=RADBOT_TOKEN):
         self.telegram = TeleBot(token)
         self.portfolio = RadixPortfolio([])
         self.trender = RewardTrender()
+        self.uniswap = UniswapInfo()
 
     def getSMA(self):
         req = requests.get('http://api.coingecko.com/api/v3/coins/e-radix/market_chart?vs_currency=usd&days=7&interval=hourly')
@@ -147,12 +129,20 @@ class RadBot():
     def analyseWallets(self, wallets, colors=False):
         try:
             self.portfolio = RadixPortfolio(wallets)
-        except:
+        except Exception as e:
+            print('Failed to retrieve wallet information: ' + repr(e))
             return "Failed to retrieve wallet information"
 
+        try:
+            uni_balances = self.uniswap.getBalances(wallets)
+        except Exception as e:
+            print('Failed to load Uniswap Info: ' + repr(e))
+            return "Failed to load Uniswap Info"
+
         LPs = self.portfolio.assets['naked LP'].sum()+self.portfolio.assets['staked LP'].sum()
-        pooled_USDC = LPs/self.portfolio.totalLPs*self.portfolio.pool_USDC/1e6
-        pooled_eXRD = LPs/self.portfolio.totalLPs*self.portfolio.pool_eXRD/1e18
+        poolShare = LPs / self.portfolio.totalLPs
+        pooled_USDC = poolShare * self.portfolio.pool_USDC / 1e6
+        pooled_eXRD = poolShare * self.portfolio.pool_eXRD / 1e18
         totalRewards = self.portfolio.assets.rewards.sum()
         
         msg =   "Analysis of requested wallet(s)\n"
@@ -161,7 +151,7 @@ class RadBot():
         msg += f"Pooled USDC: {round(pooled_USDC,2)}\n"
         msg += f"Pooled eXRD: {round(pooled_eXRD,2)}\n"
         msg += f"Total Rewards: {round(totalRewards,2)}\n"
-        msg +=  "--------------------------------+\n"
+        msg += "--------------------------------+\n"
         msg += f"Total value: {round(self.portfolio.assets.value.sum(),2)} USDC\n"
 
         for i in range(len(self.portfolio.stakes)):
@@ -182,6 +172,23 @@ class RadBot():
 
         msg += f"\n\nRewards mined through staking: {round(totalRewards-donated,2)}"
         msg += f"\nRewards donated by early leavers: {round(donated,2)}"
+
+        if len(uni_balances):
+            fees_USDC = 0
+            fees_eXRD = 0
+            for balance in uni_balances:
+                price_change_factor = self.portfolio.pool_USDC / self.portfolio.pool_eXRD / balance['USDC'] * balance['eXRD']
+                growth_factor = sqrt(price_change_factor)
+                stake_share = balance['LP'] / self.portfolio.totalLPs
+                current_USDC = stake_share * self.portfolio.pool_USDC / 1e6
+                current_eXRD = stake_share * self.portfolio.pool_eXRD / 1e18
+                initial_USDC = balance['USDC'] / 1e6
+                initial_eXRD = balance['eXRD'] / 1e18
+                expected_USDC = initial_USDC * growth_factor
+                expected_eXRD = initial_eXRD / growth_factor
+                fees_USDC += current_USDC - expected_USDC
+                fees_eXRD += current_eXRD - expected_eXRD
+            msg += f"\n\nEarned Fees: {round(fees_USDC, 2)} USDC + {round(fees_eXRD, 2)} eXRD"
 
         if len(self.portfolio.stakes) > 1:
             overallAPY = sum(self.portfolio.stakes.stake*self.portfolio.stakes.APY_current)/sum(self.portfolio.stakes.stake)
@@ -325,7 +332,8 @@ class RadBot():
             
 
 if __name__ == "__main__":
-    bot = RadBot() 
+    bot = RadBot()
+    print('Bot Started.')
 
     validCommands = ['start','help','apy','APY','a','analyse','analyze','mc','mcap','projection','u','unlock','when','whenZeroAPY','donate']
     @bot.telegram.message_handler(commands = validCommands)

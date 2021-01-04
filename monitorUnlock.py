@@ -12,19 +12,13 @@ import _thread
 
 from telebot import TeleBot
 
-from web3 import Web3
-
-eXRD_vault = '0x2b988eE889C3049104C1A5F87AF0f522790CF5F6'
-
-with open('./infura.json') as f:
-    INFURA_URL = json.load(f)['url']
+from constants import eXRD_vault
+from utils import initWeb3, readContract
 
 tl = Timeloop()
-w3 = Web3(Web3.HTTPProvider(INFURA_URL))
+w3 = initWeb3()
 
-with open('./eXRD_vault.json') as f:
-  ABI = json.load(f)['result']
-vaultContract = w3.eth.contract(address=eXRD_vault, abi=ABI)
+vaultContract = readContract(w3, './eXRD_vault.json', eXRD_vault)
 
 with open('./RadBotToken.json') as f:
     RADBOT_TOKEN = json.load(f)['token']

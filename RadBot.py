@@ -152,15 +152,7 @@ class RadBot:
         msg += f"Pooled eXRD: {round(pooled_eXRD,2)}\n"
         msg += f"Total Rewards: {round(totalRewards,2)}\n"
         msg += "--------------------------------+\n"
-        msg += f"Total value: {round(self.portfolio.assets.value.sum(),2)} USDC\n"
-
-        for i in range(len(self.portfolio.stakes)):
-            stake = self.portfolio.stakes.iloc[i]
-            age = round((stake.t1 - stake.t0) / (60 * 60 * 24), 2)
-            if colors:
-                msg += f"\nStake {i} - age {age}d - current APY {round(stake.APY_current, 2)}% - green {round(stake.green, 2)}% - red {round(stake.red, 2)}% - orange {round(stake.orange, 2)}% - blue {round(stake.blue, 2)}%"
-            else:
-                msg += f"\nStake {i} - age {age}d - rewards {round(stake.rewards, 2)} - bonus {round(6 * stake.bonus, 2)} - current APY {round(stake.APY_current, 2)}% - average APY {round(stake.APY_realized, 2)}%"
+        msg += f"Total value: {round(self.portfolio.assets.value.sum(),2)} USDC"
 
         t = pd.Timestamp.now()
         trendDF = self.trender.calcRewardsOverTime(self.portfolio.stakes)
@@ -188,7 +180,16 @@ class RadBot:
                 expected_eXRD = initial_eXRD / growth_factor
                 fees_USDC += current_USDC - expected_USDC
                 fees_eXRD += current_eXRD - expected_eXRD
-            msg += f"\n\nEarned Fees: {round(fees_USDC, 2)} USDC + {round(fees_eXRD, 2)} eXRD"
+            msg += f"\nFees earned at UniSwap: {round(fees_USDC, 2)} USDC + {round(fees_eXRD, 2)} eXRD"
+
+        if len(self.portfolio.stakes): msg += "\n\nStaking details:"
+        for i in range(len(self.portfolio.stakes)):
+            stake = self.portfolio.stakes.iloc[i]
+            age = round((stake.t1 - stake.t0) / (60 * 60 * 24), 2)
+            if colors:
+                msg += f"\nStake {i} - age {age}d - current APY {round(stake.APY_current, 2)}% - green {round(stake.green, 2)}% - red {round(stake.red, 2)}% - orange {round(stake.orange, 2)}% - blue {round(stake.blue, 2)}%"
+            else:
+                msg += f"\nStake {i} - age {age}d - rewards {round(stake.rewards, 2)} - bonus {round(6 * stake.bonus, 2)} - current APY {round(stake.APY_current, 2)}% - average APY {round(stake.APY_realized, 2)}%"
 
         if len(self.portfolio.stakes) > 1:
             overallAPY = sum(self.portfolio.stakes.stake*self.portfolio.stakes.APY_current)/sum(self.portfolio.stakes.stake)

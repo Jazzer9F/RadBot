@@ -168,6 +168,8 @@ class RadBot:
         if len(uni_balances):
             fees_USDC = 0
             fees_eXRD = 0
+            total_value_pooled = 0
+            IL = 0
             for balance in uni_balances:
                 price_change_factor = self.portfolio.pool_USDC / self.portfolio.pool_eXRD / balance['USDC'] * balance['eXRD']
                 growth_factor = sqrt(price_change_factor)
@@ -180,7 +182,11 @@ class RadBot:
                 expected_eXRD = initial_eXRD / growth_factor
                 fees_USDC += current_USDC - expected_USDC
                 fees_eXRD += current_eXRD - expected_eXRD
+                value_pooled = 2*initial_USDC
+                total_value_pooled += value_pooled
+                IL -= (2*np.sqrt(price_change_factor)/(1+price_change_factor) - 1)*value_pooled
             msg += f"\nFees earned at UniSwap: {round(fees_USDC, 2)} USDC + {round(fees_eXRD, 2)} eXRD"
+            msg += f"\nImpermanent loss: {round(IL, 2)} USDC ({round(100*IL/total_value_pooled)}%)"
 
         if len(self.portfolio.stakes): msg += "\n\nStaking details:"
         for i in range(len(self.portfolio.stakes)):

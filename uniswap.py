@@ -15,6 +15,7 @@ USDC_Contract = readContract(w3, './USDC_token.json', USDC)
 poolContract = readContract(w3, './UniSwap_pair.json', pool)
 
 TRANSFER_TOPIC = keccak(text='Transfer(address,address,uint256)')
+TOKENS = {eXRD, USDC, pool}
 
 
 class UniswapInfo:
@@ -74,8 +75,10 @@ class UniswapInfo:
             stake_USDC = 0
             stake_eXRD = 0
             stake_LP = 0
-            user_address = '0x0000'
-            for log in receipt.logs:
+            user_address = receipt['from']
+            # Go through the log starting from last transfer. Stop if transfers of all 3 tokens was observed. (Zapper.fi transactions)
+            seenTokens = set()
+            for log in reversed(receipt.logs):
                 if log.topics[0] == TRANSFER_TOPIC:
                     s = get_event_data(poolContract.events.Transfer.web3.codec, event_abi, log)
                     args = s['args']
@@ -84,25 +87,29 @@ class UniswapInfo:
                     address = s['address']
                     value = args['value']
                     if address == pool and source == VOID:  # LP tokens created and transferred to user
-                        user_address = to
+                        seenTokens.add(address)
                         stake_LP += value
                     elif address == pool and to == pool:  # LP tokens burned
-                        user_address = source
+                        seenTokens.add(address)
                         stake_LP -= value
-                    elif to == pool and source != pool:  # eXRD/USDC added
+                    elif address != pool and to == pool and source != pool:  # eXRD/USDC added
+                        seenTokens.add(address)
                         if address == eXRD:
                             stake_eXRD += value
                         elif address == USDC:
                             stake_USDC += value
-                    elif source == pool and to != pool:  # eXRD/USDC removed
+                    elif address != pool and source == pool and to != pool:  # eXRD/USDC removed
+                        seenTokens.add(address)
                         pass  # ignore - track by LP tokens only
                     else:  # transactions between Uniswap router and the Pool?
                         if self.debug:
                             print('FROM: ' + source + ' TO: ' + to + ' Address: ' + address + ' Amount: ' + str(value))
+                    if seenTokens.issuperset(TOKENS):
+                        break
             if stake_LP > 0:
                 store.addStake(user_address, stake_USDC, stake_eXRD, stake_LP)
             elif stake_LP < 0:
-                store.removeStake(user_address, stake_LP)
+                store.removeStake(user_address, -stake_LP)
 
         updatedAddresses = store.addresses
 

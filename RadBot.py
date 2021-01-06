@@ -168,8 +168,9 @@ class RadBot:
         if len(uni_balances):
             fees_USDC = 0
             fees_eXRD = 0
-            total_value_pooled = 0
-            IL = 0
+            ROI_pool = 0
+            ROI_HODL = 0
+            invested = 0
             for balance in uni_balances:
                 price_change_factor = self.portfolio.pool_USDC / self.portfolio.pool_eXRD / balance['USDC'] * balance['eXRD']
                 growth_factor = sqrt(price_change_factor)
@@ -182,10 +183,19 @@ class RadBot:
                 expected_eXRD = initial_eXRD / growth_factor
                 fees_USDC += current_USDC - expected_USDC
                 fees_eXRD += current_eXRD - expected_eXRD
-                total_value_pooled += 2*initial_USDC
-                IL -= (2 * growth_factor - price_change_factor - 1) * initial_USDC
-            msg += f"\nFees earned at UniSwap: {round(fees_USDC, 2)} USDC + {round(fees_eXRD, 2)} eXRD"
-            msg += f"\nImpermanent loss: {round(IL, 2)} USDC equivalent ({round(100*IL/total_value_pooled, 1)}%)"
+                invested += 2 * initial_USDC
+                ROI_pool += 2 * expected_USDC - 2 * initial_USDC
+                ROI_HODL += initial_eXRD * (current_USDC / current_eXRD - initial_USDC / initial_eXRD)
+
+            rewardsValue = totalRewards * self.portfolio.spot_price
+            totalROI = rewardsValue + ROI_pool + 2*fees_USDC
+            msg += f"\n\nUnclaimed reward value: {round(rewardsValue,2)} USDC"
+            msg += f"\nUniSwap fees value: {round(2 * fees_USDC, 2)} USDC"
+            msg += f"\nPool ROI (ex fees): {round(ROI_pool,2)} USDC"
+            msg += f"\nTotal LP+LM ROI: {round(totalROI,2)} USDC ({round(100 * totalROI / invested, 1)}%)"
+            
+            msg += f"\n\nROI if you had HODL'd: {round(ROI_HODL,2)} USDC ({round(100 * ROI_HODL / invested, 1)}%)"
+            msg += f"\nROI if you had YOLO'd: {round(2*ROI_HODL,2)} USDC ({round(200 * ROI_HODL / invested, 1)}%)"
 
         if len(self.portfolio.stakes): msg += "\n\nStaking details:"
         for i in range(len(self.portfolio.stakes)):

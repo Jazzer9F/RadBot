@@ -16,6 +16,7 @@ poolContract = readContract(w3, './UniSwap_pair.json', pool)
 
 TRANSFER_TOPIC = keccak(text='Transfer(address,address,uint256)')
 TOKENS = {eXRD, USDC, pool}
+ARGENT_RELAYER = {'0xdd5a1C148Ca114af2F4EBC639ce21fEd4730a608', '0x0385b3F162a0e001b60Ecb84D3CB06199d78f666', '0xF27696C8BCa7D54D696189085Ae1283f59342fA6'}
 
 
 class UniswapInfo:
@@ -87,9 +88,13 @@ class UniswapInfo:
                     address = s['address']
                     value = args['value']
                     if address == pool and source == VOID:  # LP tokens created and transferred to user
+                        if user_address in ARGENT_RELAYER:
+                            user_address = to
                         seenTokens.add(address)
                         stake_LP += value
                     elif address == pool and to == pool:  # LP tokens burned
+                        if user_address in ARGENT_RELAYER:
+                            user_address = source
                         seenTokens.add(address)
                         stake_LP -= value
                     elif address != pool and to == pool and source != pool:  # eXRD/USDC added

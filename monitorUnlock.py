@@ -40,7 +40,7 @@ def unlockTime():
         method = vaultContract.functions.getUnlockedPercentages(0)
         unlocked = method.call()
     
-        if unlocked > 15:
+        if unlocked > 20:
             seenUnlock = True
             
             for destination, dest_id in subscribers.items():

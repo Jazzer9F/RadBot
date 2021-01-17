@@ -21,7 +21,7 @@ poolContract = readContract(w3, './UniSwap_pair.json', pool)
 
 class RadixPortfolio:
     # Emission rate (hardcoded for now)
-    E = int(50e24/30/24/60/60)
+    E = int(25e24/30/24/60/60)
 
     def __init__(self, wallets):
         self.wallets = [Web3.toChecksumAddress(w) for w in wallets]

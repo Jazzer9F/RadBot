@@ -19,7 +19,7 @@ w3 = initWeb3()
 rewardsContract = readContract(w3, './eXRD_rewards.json', eXRD_rewards)
 
 
-emissionTimestamps = np.array([1605629336, 1608221336, 1608221858, 1610813858])
+emissionTimestamps = np.array([1605629336, 1608221336, 1608221858, 1610813858, 1610822511])
 
 class RewardTrender():
     baseIndex = pd.date_range(start='17-11-2020 17:00', periods=180*4, freq='6H')
@@ -209,10 +209,10 @@ class RewardTrender():
         t0 = 1605629336
         t0_ = t0 + (24*60*60*30)
         t1 = 1608221858
-        t1_ = t1 + (24*60*60*30)
-        
-        t2 = t1_
+        t1_ = t1 + (24*60*60*30)        
+        t2 = 1610822511
         t2_ = t2 + (24*60*60*60)
+        
         t3 = t2_
         t3_ = t3 + (24*60*60*30)
         t4 = t3_

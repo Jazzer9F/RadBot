@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 import time
+import threading
 import io
 
 from constants import *
@@ -24,7 +25,9 @@ emissionTimestamps = np.array([1605629336, 1608221336, 1608221858, 1610813858, 1
 class RewardTrender():
     baseIndex = pd.date_range(start='17-11-2020 17:00', periods=180*4, freq='6H')
     emissionIndex = pd.DatetimeIndex(emissionTimestamps*1e9)
-    
+    lock = threading.Lock()
+    store_cache = [None, None]
+
     def __init__(self):
         staked, unstaked = self.loadDataBase()
         if staked is not None:
@@ -48,28 +51,34 @@ class RewardTrender():
 
             self.stakeData = combined
         
-        
     def loadDataBase(self):
-        store = pd.HDFStore('stake.h5')
-        try:
-            return store['stakedDF'], store['unstakedDF']
-        except KeyError:
-            return None, None
-        finally:
-            store.close()
+        if self.store_cache[0] is not None:
+            return self.store_cache[0], self.store_cache[1]
+
+        with self.lock:
+            store = pd.HDFStore('stake.h5')
+            try:
+                self.store_cache = [store['stakedDF'], store['unstakedDF']]
+                return self.store_cache[0], self.store_cache[1]
+            except KeyError:
+                return None, None
+            finally:
+                store.close()
 
 
     def writeDataBase(self, stakedDF, unstakedDF):
-        store = pd.HDFStore('stake.h5')
-        try:
-            del store['stakedDF']
-            del store['unstakedDF']
-        except KeyError:
-            pass
+        with self.lock:
+            store = pd.HDFStore('stake.h5')
+            try:
+                del store['stakedDF']
+                del store['unstakedDF']
+            except KeyError:
+                pass
 
-        store['stakedDF'] = stakedDF
-        store['unstakedDF'] = unstakedDF
-        store.close()
+            store['stakedDF'] = stakedDF
+            store['unstakedDF'] = unstakedDF
+            store.close()
+            self.store_cache = [stakedDF, unstakedDF]
         
         
     def updateEventList(self):
@@ -276,7 +285,7 @@ class RewardTrender():
         ax = fig.gca()
         potential = sns.lineplot(data=trendDF.loc[~past], legend=None)
         for l in potential.lines: l.set_linestyle("--")
-        realized = sns.lineplot(data=trendDF.loc[past])
+        sns.lineplot(data=trendDF.loc[past])
         xmin = pd.Timestamp(stakesDF.t0.min()*1e9)-pd.Timedelta('10d')
         xmax = pd.Timestamp(stakesDF.t0.max()*1e9)+pd.Timedelta('120d')
         ax.set_xlim(xmin=xmin,xmax=xmax)

@@ -7,6 +7,7 @@ Will read the last 4 announcements from the announcements channel and post one o
 """
 import json
 import time
+import asyncio
 from telethon import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 
@@ -20,7 +21,7 @@ def loadCredentials():
         api_hash = creds['api_hash']
     return (api_id, api_hash)
 
-if __name__ == '__main__':
+async def forwardAnnouncement():
     api_id, api_hash = loadCredentials()
     async with TelegramClient('RadNews', api_id, api_hash) as client:
         await client.start()
@@ -39,3 +40,8 @@ if __name__ == '__main__':
         group = await client.get_entity(main_group)
         selected = int(time.time()/3600)%4
         await client.send_message(group, posts.messages[selected])
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(forwardAnnouncement())
+    loop.close()

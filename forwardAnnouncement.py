@@ -26,20 +26,10 @@ async def forwardAnnouncement():
     async with TelegramClient('RadNews', api_id, api_hash) as client:
         await client.start()
         channel = await client.get_entity(ann_channel)
-        posts =  await client(GetHistoryRequest(
-            peer = channel,
-            limit = 4,
-            offset_date = None,
-            offset_id = 0,
-            max_id = 0,
-            min_id = 0,
-            add_offset = 0,
-            hash = 0
-            ))
-
+        posts =  await client.get_messages(channel, 4)
         group = await client.get_entity(main_group)
         selected = 3-int(time.time()/3600)%4
-        await client.send_message(group, posts.messages[selected])
+        await client.forward_messages(group, posts[0])
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

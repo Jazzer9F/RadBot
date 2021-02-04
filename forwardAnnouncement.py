@@ -38,7 +38,7 @@ async def forwardAnnouncement():
             ))
 
         group = await client.get_entity(main_group)
-        selected = int(time.time()/3600)%4
+        selected = 3-int(time.time()/3600)%4
         await client.send_message(group, posts.messages[selected])
 
 if __name__ == '__main__':

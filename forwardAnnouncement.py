@@ -22,14 +22,15 @@ def loadCredentials():
     return (api_id, api_hash)
 
 async def forwardAnnouncement():
+    if time.time()%7200 < 1800: return
     api_id, api_hash = loadCredentials()
     async with TelegramClient('RadNews', api_id, api_hash) as client:
         await client.start()
         channel = await client.get_entity(ann_channel)
         posts =  await client.get_messages(channel, 4)
         group = await client.get_entity(main_group)
-        selected = 3-int(time.time()/3600)%4
-        await client.forward_messages(group, posts[0])
+        selected = 3-int(time.time()/7200)%4
+        await client.forward_messages(group, posts[selected])
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

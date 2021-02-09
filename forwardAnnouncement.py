@@ -12,7 +12,7 @@ from telethon import TelegramClient, types
 
 ann_channel = 'RadixAnnouncements'
 main_group = 'radix_dlt'
-period = 3     # Post once every this many hours
+period = 2     # Post once every this many hours
 
 def loadCredentials():
     with open('./telegram_API_credentials.json') as f:

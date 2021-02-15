@@ -22,7 +22,7 @@ vaultContract = readContract(w3, './eXRD_vault.json', eXRD_vault)
 
 with open('./RadBotToken.json') as f:
     RADBOT_TOKEN = json.load(f)['token']
-    
+
 with open('./subscribers.json') as f:
     subscribers = json.load(f)['subscribers']
 
@@ -32,17 +32,17 @@ seenUnlock = False
 @tl.job(interval=timedelta(seconds=5))
 def unlockTime():
     global seenUnlock
-    
+
     if seenUnlock:
         _thread.interrupt_main()
         return
     else:
         method = vaultContract.functions.getUnlockedPercentages(0)
         unlocked = method.call()
-    
-        if unlocked > 25:
+
+        if unlocked > 30:
             seenUnlock = True
-            
+
             for destination, dest_id in subscribers.items():
                 try:
                     telegram.send_message(dest_id, "Heya RadBulls!\n\n* The *\n* eXRD *\n* token *\n* unlock *\n* just *\n* happened! *\n\nCheers from team RadBot!", parse_mode='Markdown')

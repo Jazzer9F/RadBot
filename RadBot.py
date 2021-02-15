@@ -56,9 +56,9 @@ with open('./RadBotToken.json') as f:
 
 
 class RadBot:
-    lastUnlockTrigger = 1610960400
-    nextUnlockTarget = 0.15
-       
+    lastUnlockTrigger = 1613408400
+    nextUnlockTarget = 0.17
+
     def __init__(self, token=RADBOT_TOKEN):
         self.telegram = TeleBot(token)
         self.portfolio = RadixPortfolio([])
@@ -70,7 +70,7 @@ class RadBot:
         prices = pd.DataFrame(req.json()['prices'])
         prices = prices[prices[0]>1000*self.lastUnlockTrigger]
         return prices[1].mean()
-               
+
 
     def nextUnlock(self):
         t = time.time()
@@ -78,7 +78,7 @@ class RadBot:
         SMA = self.getSMA()
 
         msg = f"Current spot price: {round(self.price,4)} USDC/eXRD\n"
-        
+
         timeLeft = (self.lastUnlockTrigger + 60*60*24*7) - t
         if timeLeft < 0:
             msg += "Minimum time to next unlock has passed.\n"
@@ -87,37 +87,37 @@ class RadBot:
             hours, r = divmod(r, 60*60)
             minutes = int(r/60)
             msg += f"Minimum time to next unlock: {int(days)}d, {int(hours)}h, {int(minutes)}m.\n"
-        
+
         msg += f"Next unlock SMA target: {self.nextUnlockTarget} $\n"
         msg += f"Current CoinGecko SMA: {round(SMA,4)} $"
         return msg
-        
+
 
     def updatePrice(self):
         getReserves = poolContract.functions.getReserves()
         (pool_eXRD, pool_USDC, t) = getReserves.call()
         self.pool_eXRD = pool_eXRD
         self.pool_USDC = pool_USDC
-        
+
         self.price = self.pool_USDC*1e12/self.pool_eXRD
         return self.price
-    
-        
+
+
     def calcMarketCap(self):
         self.lockedAmount = 0
         for l in locked:
             balanceOf = eXRD_Contract.functions.balanceOf(l)
             self.lockedAmount += balanceOf.call()
-        
+
         totalSupply = eXRD_Contract.functions.totalSupply()
         self.supply = totalSupply.call()
         self.unlocked = self.supply - self.lockedAmount
 
-        self.updatePrice()        
+        self.updatePrice()
         self.mcap = self.price*(self.unlocked)/1e18
 
         SMA7 = self.getSMA()
-        
+
         msg =  f"Current spot price: {round(self.price,4)} USDC/eXRD\n"
         msg += f"Current 7-day SMA: ${round(SMA7,4)}\n"
         msg += f"Current Market Cap: {round(self.mcap/1e6,2)} MM USDC\n"
@@ -144,7 +144,7 @@ class RadBot:
         pooled_USDC = poolShare * self.portfolio.pool_USDC / 1e6
         pooled_eXRD = poolShare * self.portfolio.pool_eXRD / 1e18
         totalRewards = self.portfolio.assets.rewards.sum()
-        
+
         msg =   "Analysis of requested wallet(s)\n"
         msg += f"Unstaked USDC: {round(self.portfolio.assets.USDC.sum()/1e6,2)}\n"
         msg += f"Unstaked eXRD: {round(self.portfolio.assets.eXRD.sum()/1e18,2)}\n"
@@ -193,7 +193,7 @@ class RadBot:
             msg += f"\nUniSwap fees value: {round(2 * fees_USDC, 2)} USDC"
             msg += f"\nPool ROI (ex fees): {round(ROI_pool,2)} USDC"
             msg += f"\nTotal LP+LM ROI: {round(totalROI,2)} USDC ({round(100 * totalROI / invested, 1)}%)"
-            
+
             msg += f"\n\nROI if you had HODL'd: {round(ROI_HODL,2)} USDC ({round(100 * ROI_HODL / invested, 1)}%)"
             msg += f"\nROI if you had YOLO'd: {round(2*ROI_HODL,2)} USDC ({round(200 * ROI_HODL / invested, 1)}%)"
 
@@ -214,23 +214,23 @@ class RadBot:
             msg += f"\nTotal unclaimed eXRD rewards: {round(self.portfolio.stakes.rewards.sum(),2)}"
 
         return msg
-    
-    
+
+
     def rewardsProjection(self, wallets):
         try:
             self.portfolio = RadixPortfolio(wallets)
         except:
             raise Exception("Failed")
-        
+
         self.trender.updateEventList()
         return self.trender.plotRewards(self.portfolio.stakes)
-    
-    
+
+
     def calcAPY(self):
         msg =  f"Current spot price: {round(self.updatePrice(),4)} USDC/eXRD\n"
         msg += f"Current initial APY: {round(self.portfolio.initial_APY,2)}%\n"
         msg += f"Current nominal APY: {round(self.portfolio.nominal_APY,2)}% ({round(6*self.portfolio.nominal_APY,2)}%)\n"
-        
+
         return msg
 
 
@@ -244,7 +244,7 @@ class RadBot:
         msg += "\n  /unlock --> next unlock info"
         msg += "\n  /when --> when negative APY"
         msg += "\n  /donate --> when you're feeling generous"
-        
+
         return msg
 
 
@@ -280,7 +280,7 @@ class RadBot:
         if not result['success']:
             print('Failure to optimize target function')
             return "Calculation error"
-        
+
         T_min = result['x'][0]
         APY_min = APY(T_min)
 
@@ -295,19 +295,19 @@ class RadBot:
 
         T_launch = (int(time.time()) - launchTime)/60/60/24
         APY_launch = APY(T_launch)
-        
+
         msg += f"\n\nNominal APY: {round(self.portfolio.nominal_APY,2)}% ({round(6*self.portfolio.nominal_APY,2)}%)"
         msg += f"\nInitial APY: {round(self.portfolio.initial_APY,2)}% for completely new stake"
         msg += f"\nLowest APY < 90d: {round(APY_min,2)}% for {round(T_min,1)} days old stake"
         msg += f"\nLaunch stake APY: {round(APY_launch,2)}% for {round(T_launch,1)} days old stake"
 
-        if APY_launch > 0:            
+        if APY_launch > 0:
             criticalStake = (1 + T_launch/RT + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*SiTi/T_launch
             stakeMargin = criticalStake - Si
-            
+
             USDC_per_LP = 2*self.portfolio.pool_USDC/self.portfolio.totalLPs
             USDC_margin = stakeMargin * USDC_per_LP/1e6
-            
+
             msg += f"\n\nCurrently launch stake has positive APY. If more than {round(USDC_margin/1e6,2)} MM USDC of fresh stake is added, launch stake APY will go negative."
         else:
             # This should be refined for the remote option that APY_min < 0
@@ -320,7 +320,7 @@ class RadBot:
 
     def handleCommand(self, message):
         command = message.text.split()[0][1:]
-        
+
         if command in ['start', 'help']:
             self.telegram.reply_to(message, self.helpMessage())
         elif command in ['apy', 'APY']:
@@ -330,7 +330,7 @@ class RadBot:
         elif command in ['donate']:
             self.telegram.reply_to(message, "RadBot is and will remain free to use for as long as I'll maintain her. If you find her services valuable, donations to show appreciation are welcome. Thanks for your support! \n\nETH address: 0x451423D5CA2618a3CC6944AD754A60083b3a125f")
         elif command in ['mc', 'mcap']:
-            self.telegram.reply_to(message, self.calcMarketCap())        
+            self.telegram.reply_to(message, self.calcMarketCap())
         elif command in ['projection']:
             try:
                 with self.rewardsProjection(message.text.split()[1:]) as buffer:
@@ -343,9 +343,9 @@ class RadBot:
         elif command in ['when', 'whenZeroAPY']:
             self.telegram.reply_to(message, self.whenNegativeAPY())
         else:
-            self.telegram.reply_to(message, "Unknown command. Try /help for command list.")        
-            
-            
+            self.telegram.reply_to(message, "Unknown command. Try /help for command list.")
+
+
 
 if __name__ == "__main__":
     bot = RadBot()
@@ -358,6 +358,5 @@ if __name__ == "__main__":
             bot.handleCommand(message)
         except:
             bot.telegram.reply_to(message, "Error during execution.")
-    
+
     bot.telegram.polling()
-    

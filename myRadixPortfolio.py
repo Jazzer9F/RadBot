@@ -114,7 +114,7 @@ class RadixPortfolio:
         green = self.stakes.stake/self.totalStakeDays*(self.unlocked/1e12)*self.stakes['bonus']
         red = self.totalStake/self.totalStakeDays*self.stakes.stake*T0/self.totalStakeDays*(self.unlocked/1e12)*self.stakes['bonus']
         orange = self.stakes.stake*T0/self.totalStakeDays*(self.E/1e12)*(60*60*24)*self.stakes['bonus']
-        blue = 10/6*self.stakes.stake*T0/self.totalStakeDays*(self.unlocked/1e12)*T0/90**2
+        blue = 10/6*self.stakes.stake*T0/self.totalStakeDays*(self.unlocked/1e12)*T0/90**2*(T0<90)
 
         eXRD_per_LP = 2*self.pool_eXRD/self.totalLPs
         annual_reward_per_LP = (green-red+orange+blue)/(self.stakes.stake/1e12)*365

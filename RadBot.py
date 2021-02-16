@@ -299,7 +299,7 @@ class RadBot:
         msg += f"\n\nNominal APY: {round(self.portfolio.nominal_APY,2)}% ({round(6*self.portfolio.nominal_APY,2)}%)"
         msg += f"\nInitial APY: {round(self.portfolio.initial_APY,2)}% for completely new stake"
         msg += f"\nLowest APY < 90d: {round(APY_min,2)}% for {round(T_min,1)} days old stake"
-        msg += f"\nHighest APY: {round(APY(90),2)}% just before reaching 90d"
+        msg += f"\nHighest APY: {round(APY(89.9999),2)}% just before reaching 90d"
         msg += f"\nLaunch stake APY: {round(APY_launch,2)}% for {round(T_launch,1)} days old stake"
 
         if APY_launch > 0:

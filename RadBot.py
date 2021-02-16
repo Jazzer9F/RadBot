@@ -249,7 +249,7 @@ class RadBot:
 
 
     def whenNegativeAPY(self):
-        launchTime = 1605542100
+        launchTime = 1605629336
         SiTi = self.portfolio.totalStakeDays
         Si = self.portfolio.totalStake
 

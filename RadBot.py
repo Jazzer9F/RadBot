@@ -320,7 +320,7 @@ class RadBot:
 
 
     def handleCommand(self, message):
-        message.chat.id = message.from.id        
+        message.chat.id = message['from'].id        
         command = message.text.split()[0][1:]
         if command in ['start', 'help']:
             self.telegram.reply_to(message, self.helpMessage())

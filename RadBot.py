@@ -339,7 +339,8 @@ class RadBot:
             except:
                 self.telegram.reply_to(message, "Failed to analyze address(es).")
         elif command in ['u', 'unlock']:
-            self.telegram.send_message(message['from']['id'], self.nextUnlock())
+            self.telegram.reply_to(message, "To reduce channel spam, unlock is now only available in DM.")
+            self.telegram.send_message(message.from_user.id, self.nextUnlock())
         elif command in ['when', 'whenZeroAPY']:
             self.telegram.reply_to(message, self.whenNegativeAPY())
         else:

@@ -320,7 +320,6 @@ class RadBot:
 
 
     def handleCommand(self, message):
-        message.chat.id = message['from'].id        
         command = message.text.split()[0][1:]
         if command in ['start', 'help']:
             self.telegram.reply_to(message, self.helpMessage())
@@ -340,7 +339,7 @@ class RadBot:
             except:
                 self.telegram.reply_to(message, "Failed to analyze address(es).")
         elif command in ['u', 'unlock']:
-            self.telegram.reply_to(message, self.nextUnlock())
+            self.telegram.send_message(message.from['id'], self.nextUnlock())
         elif command in ['when', 'whenZeroAPY']:
             self.telegram.reply_to(message, self.whenNegativeAPY())
         else:

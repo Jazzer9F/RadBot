@@ -288,7 +288,7 @@ class RewardTrender():
         for l in potential.lines: l.set_linestyle("--")
         sns.lineplot(data=trendDF.loc[past])
         xmin = pd.Timestamp(stakesDF.t0.min()*1e9)-pd.Timedelta('10d')
-        xmax = pd.Timestamp(stakesDF.t0.max()*1e9)+pd.Timedelta('120d')
+        xmax = pd.Timestamp(stakesDF.t0.max()*1e9)+pd.Timedelta('150d')
         ax.set_xlim(xmin=xmin,xmax=xmax)
         ax.set_ylim(ymin=0)
         plt.xticks(rotation=60)
@@ -303,7 +303,7 @@ class RewardTrender():
 
 
 if __name__ == "__main__":
-    stakes = pd.DataFrame([{'stake':1256060027644086, 't0':1605921575}])
+    stakes = pd.DataFrame([{'stake':1256060027644086, 't0':1605634336}])
     rT = RewardTrender()
     rT.updateEventList()
 

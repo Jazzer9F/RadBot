@@ -23,7 +23,7 @@ rewardsContract = readContract(w3, './eXRD_rewards.json', eXRD_rewards)
 emissionTimestamps = np.array([1605629336, 1608221336, 1608221858, 1610813858, 1610822511])
 
 class RewardTrender():
-    baseIndex = pd.date_range(start='17-11-2020 17:00', periods=180*4, freq='6H')
+    baseIndex = pd.date_range(start='17-11-2020 17:00', periods=270*4, freq='6H')
     emissionIndex = pd.DatetimeIndex(emissionTimestamps*1e9)
     lock = threading.Lock()
     store_cache = [None, None]

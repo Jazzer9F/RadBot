@@ -360,4 +360,4 @@ if __name__ == "__main__":
         except:
             bot.telegram.reply_to(message, "Error during execution.")
 
-    bot.telegram.polling()
+    bot.telegram.polling(none_stop=True)

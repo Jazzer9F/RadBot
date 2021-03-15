@@ -59,5 +59,5 @@
 7. If the bot runs successfully, then enable the service as follows so that it will automatically start up on server reboot:
 
     ```
-    sudo systemctl enbable radbot
+    sudo systemctl enable radbot
     ```

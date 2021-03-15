@@ -1,0 +1,21 @@
+[Unit]
+Description=RadBot Service
+After=multi-user.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=radbot
+Group=radbot
+WorkingDirectory=/home/radbot/RadBot
+ExecStart=/usr/bin/python /home/radbot/RadBot/RadBot.py
+StandardInput=tty-force
+Restart=always
+RestartSec=5
+
+# Specifies which signal to use when killing a service. Defaults to SIGTERM.
+# SIGHUP gives radbot time to exit cleanly before SIGKILL (default 90s)
+KillSignal=SIGHUP
+
+[Install]
+WantedBy=multi-user.target

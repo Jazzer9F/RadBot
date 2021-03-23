@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import time
 import requests
+from requests.exceptions import ReadTimeout
 from telebot import TeleBot
 from myRadixPortfolio import RadixPortfolio
 from rewards import RewardTrender
@@ -360,4 +361,10 @@ if __name__ == "__main__":
         except:
             bot.telegram.reply_to(message, "Error during execution.")
 
-    bot.telegram.polling(none_stop=True)
+    restart = True
+    while restart:
+        restart = False
+        try:
+            bot.telegram.polling(none_stop=True)
+        except ReadTimeout:
+            restart = True

@@ -57,8 +57,8 @@ with open('./RadBotToken.json') as f:
 
 
 class RadBot:
-    lastUnlockTrigger = 1613408400
-    nextUnlockTarget = 0.17
+    lastUnlockTrigger = 1616400000
+    nextUnlockTarget = 0.19
 
     def __init__(self, token=RADBOT_TOKEN):
         self.telegram = TeleBot(token)

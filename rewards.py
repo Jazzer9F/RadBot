@@ -279,7 +279,7 @@ class RewardTrender():
         trendDF = trendDF.loc[self.baseIndex]
         past = (ix <= pd.Timestamp(time.time()*1e9))
         R_columns = [c for c in trendDF.columns if 'stake ' in c]
-        trendDF = trendDF[R_columns].sum(axis=1)
+        trendDF = 216/172*trendDF[R_columns].sum(axis=1)
 
         fig = plt.figure(figsize=(12,8))
         plt.title('Rewards projection assuming nobody (un)stakes', fontsize=24, fontweight='bold')
@@ -288,7 +288,7 @@ class RewardTrender():
         for l in potential.lines: l.set_linestyle("--")
         sns.lineplot(data=trendDF.loc[past])
         xmin = pd.Timestamp(stakesDF.t0.min()*1e9)-pd.Timedelta('10d')
-        xmax = pd.Timestamp(stakesDF.t0.max()*1e9)+pd.Timedelta('150d')
+        xmax = pd.Timestamp(stakesDF.t0.max()*1e9)+pd.Timedelta('180d')
         ax.set_xlim(xmin=xmin,xmax=xmax)
         ax.set_ylim(ymin=0)
         plt.xticks(rotation=60)
@@ -311,3 +311,13 @@ if __name__ == "__main__":
     with rT.plotRewards(stakes) as buffer:
         im = Image.open(buffer)
         im.show()
+
+#ix = rT.stakeData.index
+#past = (ix <= pd.Timestamp(time.time()*1e9))
+#fig = plt.figure(figsize=(12,8))
+#ns.lineplot(data=rT.stakeData.donatedU.loc[past])
+#plt.savefig('test.png', bbox='tight')
+
+#staked, unstaked = rT.loadDataBase()
+#unstaked.sort_values(by='amount').tail()
+#unstaked.loc[702]

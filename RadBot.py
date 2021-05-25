@@ -155,16 +155,16 @@ class RadBot:
         msg += "--------------------------------+\n"
         msg += f"Total value: {round(self.portfolio.assets.value.sum(),2)} USDC"
 
-        t = pd.Timestamp.now()
-        trendDF = self.trender.calcRewardsOverTime(self.portfolio.stakes)
-        d_columns = [c for c in trendDF.columns if 'donated ' in c]
-        donated = trendDF[d_columns].sum(axis=1)
-        donated = donated.groupby(donated.index).last()
-        donated[t] = np.NaN
-        donated = donated.sort_index().interpolate(method='polynomial',order=2)[t]
-
-        msg += f"\n\nRewards mined through staking: {round(totalRewards-donated,2)}"
-        msg += f"\nRewards donated by early leavers: {round(donated,2)}"
+        #t = pd.Timestamp.now()
+        #trendDF = self.trender.calcRewardsOverTime(self.portfolio.stakes)
+        #d_columns = [c for c in trendDF.columns if 'donated ' in c]
+        #donated = trendDF[d_columns].sum(axis=1)
+        #donated = donated.groupby(donated.index).last()
+        #donated[t] = np.NaN
+        #donated = donated.sort_index().interpolate(method='polynomial',order=2)[t]
+        #
+        #msg += f"\n\nRewards mined through staking: {round(totalRewards-donated,2)}"
+        #msg += f"\nRewards donated by early leavers: {round(donated,2)}"
 
         if len(uni_balances):
             fees_USDC = 0

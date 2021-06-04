@@ -249,7 +249,7 @@ class RadBot:
         return msg
 
 
-    de whenMainNet(self):
+    def whenMainNet(self):
         t = time.time()
         timeLeft = (1625047200) - t
         if timeLeft < 0:

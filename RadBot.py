@@ -243,82 +243,25 @@ class RadBot:
         msg += "\n  /mcap --> eXRD market cap"
         msg += "\n  /projection <address> --> Rewards trend"
         msg += "\n  /unlock --> next unlock info"
-        msg += "\n  /when --> when negative APY"
+        msg += "\n  /when --> when mainnet"
         msg += "\n  /donate --> when you're feeling generous"
 
         return msg
 
 
-    def whenNegativeAPY(self):
-        launchTime = 1605629336
-        SiTi = self.portfolio.totalStakeDays
-        Si = self.portfolio.totalStake
-
-        ## Weighted average stake time
-        WATS = SiTi/self.portfolio.totalStake
-        ## Time to replenish the unlocked rewards pool
-        resupplyTime = self.portfolio.unlocked/self.portfolio.E/60/60/24
-
-        msg =   "Due to the reward pool mechanism, there is a possibility for older stake to lose unclaimed rewards (experience negative APY). See the slide deck at http://tiny.cc/RadixRewards for details."
-        msg += f"\n\nAverage time staked: {round(WATS,2)} days"
-        msg += f"\nRewards resupply time: {round(resupplyTime,2)} days"
-
-        T_launch = (int(time.time()) - launchTime)/60/60/24
-
-        U = self.portfolio.unlocked
-        E = self.portfolio.E*(60*60*24)
-        eXRD_per_LP = 2*self.portfolio.pool_eXRD/self.portfolio.totalLPs
-
-        def APY(T0):
-            B_T0 = 1/6+5/6*min((T0/90)**2,1)
-            daily_eXRD_per_LP = U*B_T0/SiTi*(1 + T0*(E/U - Si/SiTi) + (T0<90)*10*(T0/90)**2/(1+5*(T0/90)**2))
-            yearly_eXRD_per_LP = daily_eXRD_per_LP*365
-            return 100*yearly_eXRD_per_LP/eXRD_per_LP
-
-
-        targetfunc = lambda T0: T0*(E/U-Si/SiTi) + 10*(T0/90)**2/(1+5*(T0/90)**2)
-        result = minimize(targetfunc,45,method='Powell',bounds=[(0,min(90,T_launch))])
-        if not result['success']:
-            print('Failure to optimize target function')
-            return "Calculation error"
-
-        T_min = result['x'][0]
-        APY_min = APY(T_min)
-
-        ## Weighted average stake time
-        WATS = SiTi/Si
-        ## Time to replenish the unlocked rewards pool
-        RT = U/E
-
-        msg =   "Due to the reward pool mechanism, there is a possibility for older stake to lose unclaimed rewards (experience negative APY). See the slide deck at http://tiny.cc/RadixRewards for details. Key parameters to monitor below:"
-        msg += f"\n\nAverage time staked: {round(WATS,2)} days"
-        msg += f"\nRewards resupply time: {round(RT,2)} days"
-
-        T_launch = (int(time.time()) - launchTime)/60/60/24
-        APY_launch = APY(T_launch)
-
-        msg += f"\n\nNominal APY: {round(self.portfolio.nominal_APY,2)}% ({round(6*self.portfolio.nominal_APY,2)}%)"
-        msg += f"\nInitial APY: {round(self.portfolio.initial_APY,2)}% for completely new stake"
-        msg += f"\nLowest APY < 90d: {round(APY_min,2)}% for {round(T_min,1)} days old stake"
-        msg += f"\nHighest APY: {round(APY(89.9999),2)}% just before reaching 90d"
-        msg += f"\nLaunch stake APY: {round(APY_launch,2)}% for {round(T_launch,1)} days old stake"
-
-        if APY_launch > 0:
-            criticalStake = (1 + T_launch/RT + (T_launch<90)*(10*(T_launch/90)**2/(1+5*(T_launch/90)**2)))*SiTi/T_launch
-            stakeMargin = criticalStake - Si
-
-            USDC_per_LP = 2*self.portfolio.pool_USDC/self.portfolio.totalLPs
-            USDC_margin = stakeMargin * USDC_per_LP/1e6
-
-            msg += f"\n\nCurrently launch stake has positive APY. If more than {round(USDC_margin/1e6,2)} MM USDC of fresh stake is added, launch stake APY will go negative."
+    de whenMainNet(self):
+        t = time.time()
+        timeLeft = (1625047200) - t
+        if timeLeft < 0:
+            msg = "Radix main net is released. We're currently on Olympia."
+            msg += "\n See https://www.radixdlt.com/#roadmap for the roadmap to future versions."
         else:
-            # This should be refined for the remote option that APY_min < 0
-            T_critical = max(U*SiTi/(Si*U - E*SiTi),90)
-            msg += f"\n\nCurrently all stake older than {round(T_critical,1)} days has negative APY."
-
-        msg += "\n\n"
+            msg = "Radix main net (Olympia) to be released on June 30th 2021."
+            days, r = divmod(timeLeft, 60*60*24)
+            hours, r = divmod(r, 60*60)
+            minutes = int(r/60)
+            msg += f"\nJust wait a little longer: {int(days)}d, {int(hours)}h, {int(minutes)}m.\n"
         return msg
-
 
     def handleCommand(self, message):
         command = message.text.split()[0][1:]
@@ -342,8 +285,8 @@ class RadBot:
         elif command in ['u', 'unlock']:
             self.telegram.reply_to(message, "To reduce channel spam, unlock is now only available in DM.")
             self.telegram.send_message(message.from_user.id, self.nextUnlock())
-        elif command in ['when', 'whenZeroAPY']:
-            self.telegram.reply_to(message, self.whenNegativeAPY())
+        elif command in ['when']:
+            self.telegram.reply_to(message, self.whenMainNet())
         else:
             self.telegram.reply_to(message, "Unknown command. Try /help for command list.")
 
@@ -353,7 +296,7 @@ if __name__ == "__main__":
     bot = RadBot()
     print('Bot Started.')
 
-    validCommands = ['start','help','apy','APY','a','analyse','analyze','mc','mcap','projection','u','unlock','when','whenZeroAPY','donate']
+    validCommands = ['start','help','apy','APY','a','analyse','analyze','mc','mcap','projection','u','unlock','when','donate']
     @bot.telegram.message_handler(commands = validCommands)
     def botCommand(message):
         try:

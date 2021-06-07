@@ -251,12 +251,12 @@ class RadBot:
 
     def whenMainNet(self):
         t = time.time()
-        timeLeft = (1625047200) - t
+        timeLeft = (1625111940) - t
         if timeLeft < 0:
             msg = "Radix main net is released. We're currently on Olympia."
             msg += "\n See https://www.radixdlt.com/#roadmap for the roadmap to future versions."
         else:
-            msg = "Radix main net (Olympia) to be released on June 30th 2021."
+            msg = "Radix main net (Olympia) to be released on June 30th 2021, 23:59 NY time."
             days, r = divmod(timeLeft, 60*60*24)
             hours, r = divmod(r, 60*60)
             minutes = int(r/60)
